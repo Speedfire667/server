@@ -3,7 +3,7 @@ const express = require('express');
 
 // Configurações
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_s3GRpQmuodUVxfVGzlgGgsSUfHIp7wPyNJTqPznkfd7';
+const CLIENT_TOKEN = 'ptlc_5w9nYa83K9LNjBvpo7NvrjKTKKRmEfh8EIaqjbvYxzh';
 const SERVER_ID = 'dff875d0'; // ID do servidor específico
 
 // Cabeçalhos
