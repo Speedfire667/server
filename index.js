@@ -8,7 +8,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const PANEL_URL = 'https://backend.magmanode.com';
 const CLIENT_TOKEN = 'ptlc_Db3dp1bv0rVZsutv2aH4mlYg6XXTkwXvZL0XUwEaByL'; // Use com cuidado!
 const SERVER_ID = 'dff875d0'; // seu server ID do painel
-const DISCORD_TOKEN = 'MTM2MDAzNzY3ODIxMjcxMDQ4MQ.GFjODP.abSdsuYaQu0Bop2lTOYVwdSmkDGNr4w-v6HqVg'; // Use com cuidado!
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN; Use com cuidado!
 const ALLOWED_CHANNEL_ID = '1360274781697478798'; // ID do canal permitido para os comandos
 const PORT = 3000;
 
