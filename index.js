@@ -21,6 +21,7 @@ const app = express();
 
 // ========== FUNÇÕES DO SERVIDOR ==========
 
+// Obtém o IP público
 async function obterIpPublico() {
   try {
     const res = await axios.get('https://api.ipify.org?format=json');
@@ -31,6 +32,7 @@ async function obterIpPublico() {
   }
 }
 
+// Verifica o status do servidor
 async function statusServidor() {
   try {
     const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
@@ -43,6 +45,7 @@ async function statusServidor() {
   }
 }
 
+// Inicia o servidor
 async function iniciarServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'start' }, { headers: clientHeaders });
@@ -53,6 +56,7 @@ async function iniciarServidor() {
   }
 }
 
+// Para o servidor
 async function pararServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'stop' }, { headers: clientHeaders });
@@ -63,6 +67,7 @@ async function pararServidor() {
   }
 }
 
+// Reinicia o servidor
 async function reiniciarServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'restart' }, { headers: clientHeaders });
@@ -75,26 +80,37 @@ async function reiniciarServidor() {
 
 // ========== ROTAS WEB ==========
 
+// Rota para mostrar o status
 app.get('/status', async (req, res) => {
   const status = await statusServidor();
   res.json({ status });
 });
 
+// Rota para iniciar o servidor
 app.post('/iniciar', async (req, res) => {
   const result = await iniciarServidor();
   res.json({ message: result });
 });
 
+// Rota para parar o servidor
 app.post('/parar', async (req, res) => {
   const result = await pararServidor();
   res.json({ message: result });
 });
 
+// Rota para reiniciar o servidor
 app.post('/reiniciar', async (req, res) => {
   const result = await reiniciarServidor();
   res.json({ message: result });
 });
 
+// Rota para mostrar o IP público
+app.get('/ip', async (req, res) => {
+  const ip = await obterIpPublico();
+  res.json({ ip });
+});
+
+// Página inicial com botões e status do servidor
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -126,6 +142,7 @@ app.get('/', (req, res) => {
         <button onclick="iniciarServidor()">Iniciar Servidor</button>
         <button onclick="pararServidor()">Parar Servidor</button>
         <button onclick="reiniciarServidor()">Reiniciar Servidor</button>
+        <button onclick="mostrarIp()">Ver IP</button>
         <div id="status">Status do Servidor: <span id="statusText">Carregando...</span></div>
         <script>
             async function obterStatus() {
@@ -151,6 +168,11 @@ app.get('/', (req, res) => {
                 alert(data.message);
                 obterStatus();
             }
+            async function mostrarIp() {
+                const res = await fetch('/ip');
+                const data = await res.json();
+                alert(\`🌍 IP público: \${data.ip}\`);
+            }
             window.onload = obterStatus;
         </script>
     </body>
@@ -168,10 +190,12 @@ const bot = new Client({
   ],
 });
 
+// Ao iniciar o bot
 bot.on('ready', () => {
   console.log(`🤖 Bot do Discord online como ${bot.user.tag}`);
 });
 
+// Ao receber mensagens no Discord
 bot.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
@@ -190,9 +214,23 @@ bot.on('messageCreate', async (message) => {
   } else if (content === '!status') {
     const status = await statusServidor();
     message.reply(`📊 Status do servidor: **${status}**`);
+  } else if (content === '!ip') {
+    const ip = await obterIpPublico();
+    message.reply(`🌍 IP público do servidor: \`${ip}\``);
+  } else if (content === '!help') {
+    message.reply(`
+📋 **Comandos disponíveis:**
+\`!start\` - Iniciar o servidor
+\`!stop\` - Parar o servidor
+\`!restart\` - Reiniciar o servidor
+\`!status\` - Ver status atual
+\`!ip\` - Ver IP público do servidor
+\`!help\` - Mostrar esta mensagem
+    `);
   }
 });
 
+// Inicia o bot
 bot.login(DISCORD_TOKEN);
 
 // ========== INICIAR EXPRESS ==========
