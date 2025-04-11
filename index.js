@@ -6,7 +6,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 // Defina as variáveis diretamente no código, mas Lembre-se de não comprometer os tokens!
 // Utilize variáveis diretamente aqui, mas mantenha esses valores privados em produção.
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_7RIQVcZtC3fcO15S1PaEmFeetUbZ4pi3M0H0XrulaNf'; // Use com cuidado!
+const CLIENT_TOKEN = 'ptlc_5w9nYa83K9L'; // Use com cuidado!
 const SERVER_ID = 'dff875d0'; // seu server ID do painel
 const DISCORD_TOKEN = 'MTM2MDAzNzY3ODIxMjcxMDQ4MQ.GFjODP.abSdsuYaQu0Bop2lTOYVwdSmkDGNr4w-v6HqVg'; // Use com cuidado!
 const ALLOWED_CHANNEL_ID = '1360274781697478798'; // ID do canal permitido para os comandos
