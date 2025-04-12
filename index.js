@@ -3,11 +3,10 @@ const express = require('express');
 const { Client, GatewayIntentBits } = require('discord.js');
 
 // ========== CONFIGS ==========
-// Lembre-se: nunca exponha tokens em produção!
 const PANEL_URL = 'https://backend.magmanode.com';
 const CLIENT_TOKEN = 'ptlc_Db3dp1bv0rVZsutv2aH4mlYg6XXTkwXvZL0XUwEaByL'; // Use com cuidado!
 const SERVER_ID = 'dff875d0';
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN; // Use com cuidado!
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const ALLOWED_CHANNEL_ID = '1360274781697478798';
 const PORT = 3000;
 
@@ -21,18 +20,51 @@ const app = express();
 
 // ========== FUNÇÕES DO SERVIDOR ==========
 
-// Obtém o IP público
-async function obterIpPublico() {
+async function obterIpDoServidor() {
   try {
-    const res = await axios.get('https://api.ipify.org?format=json');
-    return res.data.ip;
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}`, {
+      headers: clientHeaders,
+    });
+    const allocations = res.data.attributes.relationships.allocations.data;
+    const principal = allocations.find(a => a.attributes.is_default);
+    if (!principal) return '❌ Nenhum IP padrão configurado.';
+    const ip = principal.attributes.ip;
+    const port = principal.attributes.port;
+    return `${ip}:${port}`;
   } catch (err) {
-    console.error('❌ Erro ao obter IP público:', err.message);
-    return 'Desconhecido';
+    console.error('❌ Erro ao obter IP do servidor:', err.message);
+    return '❌ Erro ao obter IP do servidor!';
   }
 }
 
-// Verifica o status do servidor
+async function obterUsoServidor() {
+  try {
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
+      headers: clientHeaders,
+    });
+    const usage = res.data.attributes.resources;
+    return `
+CPU: ${(usage.cpu_absolute || 0).toFixed(2)}%
+RAM: ${(usage.memory_bytes / 1024 / 1024).toFixed(2)} MB
+Disco: ${(usage.disk_bytes / 1024 / 1024).toFixed(2)} MB`;
+  } catch (err) {
+    console.error('❌ Erro ao obter uso de recursos:', err.message);
+    return '❌ Erro ao obter uso de recursos!';
+  }
+}
+
+async function obterLogsServidor() {
+  try {
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/logs`, {
+      headers: clientHeaders,
+    });
+    return res.data.data || 'Sem logs disponíveis.';
+  } catch (err) {
+    console.error('❌ Erro ao obter logs:', err.message);
+    return '❌ Erro ao obter logs!';
+  }
+}
+
 async function statusServidor() {
   try {
     const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
@@ -45,7 +77,6 @@ async function statusServidor() {
   }
 }
 
-// Inicia o servidor
 async function iniciarServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'start' }, { headers: clientHeaders });
@@ -56,7 +87,6 @@ async function iniciarServidor() {
   }
 }
 
-// Para o servidor
 async function pararServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'stop' }, { headers: clientHeaders });
@@ -67,7 +97,6 @@ async function pararServidor() {
   }
 }
 
-// Reinicia o servidor
 async function reiniciarServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'restart' }, { headers: clientHeaders });
@@ -80,70 +109,46 @@ async function reiniciarServidor() {
 
 // ========== ROTAS WEB ==========
 
-// Rota para mostrar o status
 app.get('/status', async (req, res) => {
   const status = await statusServidor();
   res.json({ status });
 });
 
-// Rota para iniciar o servidor
 app.post('/iniciar', async (req, res) => {
   const result = await iniciarServidor();
   res.json({ message: result });
 });
 
-// Rota para parar o servidor
 app.post('/parar', async (req, res) => {
   const result = await pararServidor();
   res.json({ message: result });
 });
 
-// Rota para reiniciar o servidor
 app.post('/reiniciar', async (req, res) => {
   const result = await reiniciarServidor();
   res.json({ message: result });
 });
 
-// Rota para mostrar o IP público
 app.get('/ip', async (req, res) => {
-  const ip = await obterIpPublico();
+  const ip = await obterIpDoServidor();
   res.json({ ip });
 });
 
-// Página inicial com botões e status do servidor
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Controle do Servidor</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                text-align: center;
-                padding: 20px;
-            }
-            button {
-                padding: 10px 20px;
-                font-size: 16px;
-                cursor: pointer;
-                margin: 10px;
-            }
-            #status {
-                margin-top: 20px;
-                font-weight: bold;
-            }
-        </style>
     </head>
     <body>
         <h1>Controle do Servidor</h1>
-        <button onclick="iniciarServidor()">Iniciar Servidor</button>
-        <button onclick="pararServidor()">Parar Servidor</button>
-        <button onclick="reiniciarServidor()">Reiniciar Servidor</button>
+        <button onclick="iniciarServidor()">Iniciar</button>
+        <button onclick="pararServidor()">Parar</button>
+        <button onclick="reiniciarServidor()">Reiniciar</button>
         <button onclick="mostrarIp()">Ver IP</button>
-        <div id="status">Status do Servidor: <span id="statusText">Carregando...</span></div>
+        <div id="status">Status: <span id="statusText">Carregando...</span></div>
         <script>
             async function obterStatus() {
                 const res = await fetch('/status');
@@ -171,7 +176,7 @@ app.get('/', (req, res) => {
             async function mostrarIp() {
                 const res = await fetch('/ip');
                 const data = await res.json();
-                alert(\`🌍 IP público: \${data.ip}\`);
+                alert(\`🌍 IP do servidor: \${data.ip}\`);
             }
             window.onload = obterStatus;
         </script>
@@ -190,12 +195,10 @@ const bot = new Client({
   ],
 });
 
-// Ao iniciar o bot
 bot.on('ready', () => {
   console.log(`🤖 Bot do Discord online como ${bot.user.tag}`);
 });
 
-// Ao receber mensagens no Discord
 bot.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
@@ -215,8 +218,14 @@ bot.on('messageCreate', async (message) => {
     const status = await statusServidor();
     message.reply(`📊 Status do servidor: **${status}**`);
   } else if (content === '!ip') {
-    const ip = await obterIpPublico();
-    message.reply(`🌍 IP público do servidor: \`${ip}\``);
+    const ip = await obterIpDoServidor();
+    message.reply(`🌐 IP do servidor: \`${ip}\``);
+  } else if (content === '!usage') {
+    const usage = await obterUsoServidor();
+    message.reply(`📈 Uso do servidor:\n${usage}`);
+  } else if (content === '!logs') {
+    const logs = await obterLogsServidor();
+    message.reply(`📝 Logs recentes:\n\`\`\`\n${logs.slice(0, 1800)}\n\`\`\``);
   } else if (content === '!help') {
     message.reply(`
 📋 **Comandos disponíveis:**
@@ -224,19 +233,14 @@ bot.on('messageCreate', async (message) => {
 \`!stop\` - Parar o servidor
 \`!restart\` - Reiniciar o servidor
 \`!status\` - Ver status atual
-\`!ip\` - Ver IP público do servidor
+\`!ip\` - Ver IP do servidor
+\`!usage\` - Ver uso de CPU/RAM/Disco
+\`!logs\` - Ver logs recentes
 \`!help\` - Mostrar esta mensagem
     `);
   }
 });
 
 // Inicia o bot
-bot.login(DISCORD_TOKEN);
-
-// ========== INICIAR EXPRESS ==========
-
-app.listen(PORT, async () => {
-  const ip = await obterIpPublico();
-  console.log(`🌐 Interface web: http://localhost:${PORT}`);
-  console.log(`📡 IP Público: ${ip}`);
-});
+bot.login(DISCORD
+          
