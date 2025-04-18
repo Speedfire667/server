@@ -1,95 +1,130 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
 
-const YOUTUBE_CHANNEL = 'https://youtube.com/seu_canal'; // Coloque seu link aqui
-const CHANNEL_ID = '1362616215075291287'; // Substitua pelo ID do canal permitido
-
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildInvites
-    ]
-});
+// DADOS DIRETOS NO CÓDIGO (substitua pelos seus):
+const TOKEN = process.env.TOKEN; // Do .env
+const CLIENT_ID = '1362610823305887844';  // Exemplo: 123456789012345678
+const CHANNEL_ID = '1362616215075291287';  // Exemplo: 112233445566778899
+const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/c/SEU_CANAL'; // Substitua pelo seu link
 
 const inviteCounts = new Map();
 let previousInvites = new Map();
 
-client.once('ready', async () => {
-    console.log(`Bot está online como ${client.user.tag}`);
-    await loadInvites();
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildInvites,
+  ],
 });
 
-async function loadInvites() {
-    for (const guild of client.guilds.cache.values()) {
-        const invites = await guild.invites.fetch();
-        const codeMap = new Map();
-        invites.forEach(inv => codeMap.set(inv.code, inv));
-        previousInvites.set(guild.id, codeMap);
-    }
+// REGISTRA OS COMANDOS SLASH "/conquistas" e "/chanel"
+const commands = [
+  new SlashCommandBuilder()
+    .setName('conquistas')
+    .setDescription('Veja quantas pessoas você convidou'),
+  new SlashCommandBuilder()
+    .setName('chanel')
+    .setDescription('Veja o canal do YouTube do bot'),
+].map(cmd => cmd.toJSON());
+
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+
+(async () => {
+  try {
+    console.log('Registrando comandos...');
+    await rest.put(Routes.applicationCommands(CLIENT_ID), {
+      body: commands,
+    });
+    console.log('Comandos registrados com sucesso!');
+  } catch (err) {
+    console.error('Erro ao registrar comandos:', err);
+  }
+})();
+
+client.once('ready', async () => {
+  console.log(`Bot online como ${client.user.tag}`);
+  await carregarConvites();
+});
+
+async function carregarConvites() {
+  for (const guild of client.guilds.cache.values()) {
+    const invites = await guild.invites.fetch();
+    const inviteMap = new Map();
+    invites.forEach(inv => inviteMap.set(inv.code, inv));
+    previousInvites.set(guild.id, inviteMap);
+  }
 }
 
 client.on('guildMemberAdd', async member => {
-    const newInvites = await member.guild.invites.fetch();
-    const oldInvites = previousInvites.get(member.guild.id);
+  const newInvites = await member.guild.invites.fetch();
+  const oldInvites = previousInvites.get(member.guild.id);
+  const inviteUsed = newInvites.find(inv => {
+    const old = oldInvites.get(inv.code);
+    return old && inv.uses > old.uses;
+  });
 
-    const inviteUsed = newInvites.find(inv => {
-        const old = oldInvites.get(inv.code);
-        return old && inv.uses > old.uses;
+  if (inviteUsed?.inviter) {
+    const inviterId = inviteUsed.inviter.id;
+    const current = inviteCounts.get(inviterId) || 0;
+    const total = current + 1;
+    inviteCounts.set(inviterId, total);
+
+    const cargos = {
+      5: 'Conquistador',
+      10: 'Veterano',
+      20: 'Lendário',
+    };
+
+    if (cargos[total]) {
+      const role = member.guild.roles.cache.find(r => r.name === cargos[total]);
+      if (role) {
+        const convidador = await member.guild.members.fetch(inviterId).catch(() => null);
+        if (convidador && !convidador.roles.cache.has(role.id)) {
+          await convidador.roles.add(role);
+          convidador.send(`Você ganhou o cargo **${cargos[total]}** por convidar ${total} pessoas!`);
+        }
+      }
+    }
+  }
+
+  const updatedMap = new Map();
+  newInvites.forEach(inv => updatedMap.set(inv.code, inv));
+  previousInvites.set(member.guild.id, updatedMap);
+});
+
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  // Comando /conquistas
+  if (interaction.commandName === 'conquistas') {
+    const total = inviteCounts.get(interaction.user.id) || 0;
+
+    // Envia mensagem no canal fixo (CHANNEL_ID) e também no chat que chamou o comando
+    const canal = await client.channels.fetch(CHANNEL_ID);
+
+    // Mensagem no canal específico
+    canal.send(`**${interaction.user.tag}** já convidou **${total}** pessoa(s)!`);
+
+    // Resposta ephemeral só para quem usou o comando
+    await interaction.reply({
+      content: `Você já convidou **${total}** pessoa(s)!`,
+      ephemeral: true,  // Só quem usou vê
     });
+  }
 
-    if (inviteUsed?.inviter) {
-        const inviterId = inviteUsed.inviter.id;
-        const current = inviteCounts.get(inviterId) || 0;
-        const total = current + 1;
+  // Comando /chanel
+  if (interaction.commandName === 'chanel') {
+    // Envia o link do canal do YouTube no canal específico (CHANNEL_ID)
+    const canal = await client.channels.fetch(CHANNEL_ID);
+    canal.send(`Aqui está o link para o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`);
 
-        inviteCounts.set(inviterId, total);
-
-        if (total === 5) {
-            const role = member.guild.roles.cache.find(r => r.name === 'Conquistador');
-            if (role) {
-                const inviterMember = await member.guild.members.fetch(inviterId).catch(() => null);
-                if (inviterMember && !inviterMember.roles.cache.has(role.id)) {
-                    await inviterMember.roles.add(role);
-                    inviterMember.send('Parabéns! Você ganhou o cargo **Conquistador** por convidar 5 pessoas!');
-                }
-            }
-        }
-    }
-
-    const updatedMap = new Map();
-    newInvites.forEach(inv => updatedMap.set(inv.code, inv));
-    previousInvites.set(member.guild.id, updatedMap);
+    // Resposta ephemeral só para quem usou o comando
+    await interaction.reply({
+      content: `Aqui está o link para o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`,
+      ephemeral: true,  // Só quem usou vê
+    });
+  }
 });
 
-client.on('messageCreate', async message => {
-    if (message.author.bot) return;
-    if (message.channel.id !== CHANNEL_ID) return; // Ignora comandos fora do canal permitido
-
-    const msg = message.content.toLowerCase();
-
-    if (msg === '!help') {
-        message.channel.send(`**Comandos disponíveis:**
-- \`!channel\` → Link do canal do YouTube
-- \`!archiciemnt\` → Veja quantas pessoas você convidou
-- \`!help\` → Mostra esta mensagem`);
-    }
-
-    if (msg === '!channel') {
-        message.channel.send(`Confira o canal do YouTube: ${YOUTUBE_CHANNEL}`);
-    }
-
-    if (msg === '!archiciemnt') {
-        const total = inviteCounts.get(message.author.id) || 0;
-        try {
-            await message.author.send(`Você já convidou **${total}** pessoa(s)!`);
-            message.reply('Te enviei uma DM com suas conquistas!');
-        } catch {
-            message.reply('Não consegui te mandar DM. Ative suas mensagens privadas.');
-        }
-    }
-});
-
-client.login(process.env.TOKEN);
+client.login(TOKEN);
