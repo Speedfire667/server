@@ -15,10 +15,11 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildInvites,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
-// REGISTRA OS COMANDOS SLASH "/conquistas" e "/chanel"
+// REGISTRA OS COMANDOS SLASH
 const commands = [
   new SlashCommandBuilder()
     .setName('conquistas')
@@ -26,6 +27,13 @@ const commands = [
   new SlashCommandBuilder()
     .setName('chanel')
     .setDescription('Veja o canal do YouTube do bot'),
+  new SlashCommandBuilder()
+    .setName('userinfo')
+    .setDescription('Veja informações sobre um usuário')
+    .addUserOption(option => option.setName('user').setDescription('Usuário a ser consultado').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('serverinfo')
+    .setDescription('Veja informações sobre o servidor'),
 ].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -81,8 +89,12 @@ client.on('guildMemberAdd', async member => {
       if (role) {
         const convidador = await member.guild.members.fetch(inviterId).catch(() => null);
         if (convidador && !convidador.roles.cache.has(role.id)) {
-          await convidador.roles.add(role);
-          convidador.send(`Você ganhou o cargo **${cargos[total]}** por convidar ${total} pessoas!`);
+          try {
+            await convidador.roles.add(role);
+            convidador.send(`Você ganhou o cargo **${cargos[total]}** por convidar ${total} pessoas!`);
+          } catch (err) {
+            console.error('Erro ao adicionar cargo:', err);
+          }
         }
       }
     }
@@ -102,9 +114,9 @@ client.on('interactionCreate', async interaction => {
 
     // Envia mensagem no canal fixo (CHANNEL_ID) e também no chat que chamou o comando
     const canal = await client.channels.fetch(CHANNEL_ID);
-
-    // Mensagem no canal específico
-    canal.send(`**${interaction.user.tag}** já convidou **${total}** pessoa(s)!`);
+    if (canal) {
+      canal.send(`**${interaction.user.tag}** já convidou **${total}** pessoa(s)!`);
+    }
 
     // Resposta ephemeral só para quem usou o comando
     await interaction.reply({
@@ -117,12 +129,33 @@ client.on('interactionCreate', async interaction => {
   if (interaction.commandName === 'chanel') {
     // Envia o link do canal do YouTube no canal específico (CHANNEL_ID)
     const canal = await client.channels.fetch(CHANNEL_ID);
-    canal.send(`Aqui está o link para o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`);
+    if (canal) {
+      canal.send(`Aqui está o link para o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`);
+    }
 
     // Resposta ephemeral só para quem usou o comando
     await interaction.reply({
       content: `Aqui está o link para o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`,
       ephemeral: true,  // Só quem usou vê
+    });
+  }
+
+  // Comando /userinfo
+  if (interaction.commandName === 'userinfo') {
+    const user = interaction.options.getUser('user');
+    const member = interaction.guild.members.cache.get(user.id);
+    await interaction.reply({
+      content: `Informações sobre o usuário **${user.tag}**: \n**ID**: ${user.id} \n**Entrou em**: ${member.joinedAt} \n**Status**: ${user.presence ? user.presence.status : 'Indisponível'}`,
+      ephemeral: true, // Só quem usou vê
+    });
+  }
+
+  // Comando /serverinfo
+  if (interaction.commandName === 'serverinfo') {
+    const guild = interaction.guild;
+    await interaction.reply({
+      content: `Informações sobre o servidor **${guild.name}**: \n**ID**: ${guild.id} \n**Canais**: ${guild.channels.cache.size} \n**Membros**: ${guild.memberCount} \n**Criado em**: ${guild.createdAt}`,
+      ephemeral: true, // Só quem usou vê
     });
   }
 });
