@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const urls = [
   'https://icebot.onrender.com',
-  'https://24.onrender.com',
+  'https://server-2-5brz.onrender.com',
   'https://exemplo.com/pagina2'
 ];
 
