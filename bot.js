@@ -103,8 +103,7 @@ client.on('interactionCreate', async interaction => {
   if (interaction.commandName === 'conquistas') {
     const total = inviteCounts.get(interaction.user.id) || 0;
     const canal = await client.channels.fetch(CHANNEL_ID);
-    canal.send(`**${interaction.user.tag}** já convidou **${total}** pessoa(s)!`);
-
+    
     await interaction.reply({
       content: `Você já convidou **${total}** pessoa(s)!`,
       ephemeral: true,
@@ -113,7 +112,6 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.commandName === 'chanel') {
     const canal = await client.channels.fetch(CHANNEL_ID);
-    canal.send(`Aqui está o link para o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`);
 
     await interaction.reply({
       content: `Aqui está o link para o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`,
