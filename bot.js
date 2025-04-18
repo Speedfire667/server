@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, MessageFla
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = '1362610823305887844'; // ID do bot
-const CHANNEL_ID = '1362616215075291287'; // ID do canal no servidor
+const CHANNEL_ID = '1362831132894433350'; // ID do canal no servidor
 const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/c/SEU_CANAL'; // Substitua pelo link do seu canal
 
 const inviteCounts = new Map();
