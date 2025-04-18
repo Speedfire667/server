@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, MessageFlags } = require('discord.js');
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = '1362610823305887844'; // ID do bot
@@ -97,18 +97,24 @@ client.on('interactionCreate', async interaction => {
     const total = inviteCounts.get(user.id) || 0;
 
     await canal.send(`**${user.tag}** já convidou **${total}** pessoa(s)!`);
-    await interaction.reply({ content: `Você já convidou **${total}** pessoa(s)!`, ephemeral: true });
+    await interaction.reply({
+      content: `Você já convidou **${total}** pessoa(s)!`,
+      flags: MessageFlags.Ephemeral // Resposta visível só para o usuário que usou o comando
+    });
   }
 
   if (interaction.commandName === 'chanel') {
     await canal.send(`Canal do YouTube: ${YOUTUBE_CHANNEL_URL}`);
-    await interaction.reply({ content: `Aqui está o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`, ephemeral: true });
+    await interaction.reply({
+      content: `Aqui está o canal do YouTube: ${YOUTUBE_CHANNEL_URL}`,
+      flags: MessageFlags.Ephemeral // Resposta visível só para o usuário que usou o comando
+    });
   }
 
   if (interaction.commandName === 'userinfo') {
     await interaction.reply({
       content: `Nome: ${user.username}\nID: ${user.id}\nCriado em: ${user.createdAt.toDateString()}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral // Resposta visível só para o usuário que usou o comando
     });
   }
 
@@ -116,7 +122,7 @@ client.on('interactionCreate', async interaction => {
     const guild = interaction.guild;
     await interaction.reply({
       content: `Servidor: ${guild.name}\nID: ${guild.id}\nMembros: ${guild.memberCount}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral // Resposta visível só para o usuário que usou o comando
     });
   }
 });
