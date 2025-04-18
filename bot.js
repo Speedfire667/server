@@ -1,6 +1,6 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 
-const TOKEN = 'MTM2MjYxMDgyMzMwNTg4Nzg0NA.GSZ-Br.dOyqzm-37qAfllG-7BxrgxHqO7rZ6VagvtunKc';
+const TOKEN = 'MTM2MjYxMDgyMzMwNTg4Nzg0NA.GgStZ-.dUCw2V_0M5W_3FJ8qufZdJ39V5fJVSkFJuoMoY';
 const YOUTUBE_CHANNEL = 'https://youtube.com/seu_canal';
 
 const client = new Client({
