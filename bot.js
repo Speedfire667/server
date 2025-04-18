@@ -5,7 +5,7 @@ const fs = require('fs');
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = '1362610823305887844';
-const CHANNEL_ID = '1362616215075291287';
+const CHANNEL_ID = '1362932927650074685';
 const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/c/SEU_CANAL';
 
 const inviteCounts = new Map();
