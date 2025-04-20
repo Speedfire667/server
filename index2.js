@@ -3,8 +3,11 @@ const axios = require('axios');
 const app = express();
 const PORT = 3000;
 
+// Desativa a verificação SSL (usar com cuidado)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 // CONFIG DO PTERODACTYL
-const API_URL = 'https://panel.pterodactyl.app'; // ou o endereço do seu painel
+const API_URL = 'https://panel.pterodactyl.app'; // coloque o link exato do seu painel aqui
 const API_KEY = 'ptlc_qbwCZjtZlXra4eQ5G32o4mFIwVIOZse6XEn8bSHlnJX';
 
 const HEADERS = {
@@ -56,7 +59,7 @@ app.get('/', async (req, res) => {
     html += `</body></html>`;
     res.send(html);
   } catch (err) {
-    res.send('Erro ao carregar servidores: ' + (err.response?.data || err.message));
+    res.send('Erro ao carregar servidores:<br><pre>' + (err.response?.data || err.message) + '</pre>');
   }
 });
 
@@ -69,8 +72,8 @@ app.post('/power', async (req, res) => {
     }, { headers: HEADERS });
     res.redirect('/');
   } catch (err) {
-    res.send('Erro ao enviar comando: ' + (err.response?.data || err.message));
+    res.send('Erro ao enviar comando:<br><pre>' + (err.response?.data || err.message) + '</pre>');
   }
 });
 
-app.listen(PORT, () => console.log(`Servidor rodando em http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Servidor web rodando em http://localhost:${PORT}`));
