@@ -3,7 +3,7 @@ const express = require('express');
 
 // ========== CONFIGS ==========
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_WjC6YaSjBX65tSMQyu5Xs6SrjzZ3fcPm4CpWUv66Ic4'; // Use com cuidado!
+const CLIENT_TOKEN = 'ptlc_Db3dp1bv0rVZsutv2aH4mlYg6XXTkwXvZL0XUwEaByL'; // Use com cuidado!
 const SERVER_ID = 'dff875d0';
 const PORT = 3000;
 
@@ -15,8 +15,7 @@ const clientHeaders = {
 
 const app = express();
 
-// ========== FUNÇÕES DO SERVIDOR ==========
-
+// ========== FUNÇÕES ==========
 async function obterIpDoServidor() {
   try {
     const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}`, {
@@ -24,13 +23,13 @@ async function obterIpDoServidor() {
     });
     const allocations = res.data.attributes.relationships.allocations.data;
     const principal = allocations.find(a => a.attributes.is_default);
-    if (!principal) return '❌ Nenhum IP padrão configurado.';
+    if (!principal) return 'Erro: Nenhum IP padrão configurado.';
     const ip = principal.attributes.ip;
     const port = principal.attributes.port;
     return `${ip}:${port}`;
   } catch (err) {
-    console.error('❌ Erro ao obter IP do servidor:', err.message);
-    return '❌ Erro ao obter IP do servidor!';
+    console.error('Erro ao obter IP do servidor:', err.message);
+    return null;
   }
 }
 
@@ -45,20 +44,8 @@ CPU: ${(usage.cpu_absolute || 0).toFixed(2)}%
 RAM: ${(usage.memory_bytes / 1024 / 1024).toFixed(2)} MB
 Disco: ${(usage.disk_bytes / 1024 / 1024).toFixed(2)} MB`;
   } catch (err) {
-    console.error('❌ Erro ao obter uso de recursos:', err.message);
-    return '❌ Erro ao obter uso de recursos!';
-  }
-}
-
-async function obterLogsServidor() {
-  try {
-    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/logs`, {
-      headers: clientHeaders,
-    });
-    return res.data.data || 'Sem logs disponíveis.';
-  } catch (err) {
-    console.error('❌ Erro ao obter logs:', err.message);
-    return '❌ Erro ao obter logs!';
+    console.error('Erro ao obter uso de recursos:', err.message);
+    return 'Erro ao obter uso de recursos!';
   }
 }
 
@@ -69,7 +56,7 @@ async function statusServidor() {
     });
     return res.data.attributes.current_state;
   } catch (err) {
-    console.error('❌ Erro ao verificar status:', err.message);
+    console.error('Erro ao verificar status:', err.message);
     return 'Erro';
   }
 }
@@ -77,35 +64,34 @@ async function statusServidor() {
 async function iniciarServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'start' }, { headers: clientHeaders });
-    return '✅ Servidor iniciado!';
+    return 'Servidor iniciado!';
   } catch (err) {
-    console.error('❌ Erro ao iniciar servidor:', err.message);
-    return '❌ Erro ao iniciar servidor!';
+    console.error('Erro ao iniciar servidor:', err.message);
+    return 'Erro ao iniciar servidor!';
   }
 }
 
 async function pararServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'stop' }, { headers: clientHeaders });
-    return '🛑 Servidor parado!';
+    return 'Servidor parado!';
   } catch (err) {
-    console.error('❌ Erro ao parar servidor:', err.message);
-    return '❌ Erro ao parar servidor!';
+    console.error('Erro ao parar servidor:', err.message);
+    return 'Erro ao parar servidor!';
   }
 }
 
 async function reiniciarServidor() {
   try {
     await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'restart' }, { headers: clientHeaders });
-    return '🔄 Servidor reiniciado!';
+    return 'Servidor reiniciado!';
   } catch (err) {
-    console.error('❌ Erro ao reiniciar servidor:', err.message);
-    return '❌ Erro ao reiniciar servidor!';
+    console.error('Erro ao reiniciar servidor:', err.message);
+    return 'Erro ao reiniciar servidor!';
   }
 }
 
-// ========== ROTAS WEB ==========
-
+// ========== ROTAS ==========
 app.get('/status', async (req, res) => {
   const status = await statusServidor();
   res.json({ status });
@@ -173,7 +159,7 @@ app.get('/', (req, res) => {
             async function mostrarIp() {
                 const res = await fetch('/ip');
                 const data = await res.json();
-                alert(\`🌍 IP do servidor: \${data.ip}\`);
+                alert(\`IP do servidor: \${data.ip}\`);
             }
             window.onload = obterStatus;
         </script>
@@ -183,6 +169,11 @@ app.get('/', (req, res) => {
 });
 
 // ========== INICIAR SERVIDOR ==========
-app.listen(PORT, () => {
-  console.log(`🌐 Painel disponível em http://localhost:${PORT}`);
+app.listen(PORT, async () => {
+  const ip = await obterIpDoServidor();
+  if (ip) {
+    console.log(ip); // Exibe só o IP no terminal
+  } else {
+    console.error('Erro ao obter o IP do servidor.');
+  }
 });
