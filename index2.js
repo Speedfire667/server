@@ -3,7 +3,7 @@ const express = require('express');
 
 // ========== CONFIGS ==========
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_cMcKz6Px1Jpo5DnylCvh6KtoNkaw20ONmTPJywPEZWY'; // Use com cuidado!
+const CLIENT_TOKEN = 'ptlc_qbwCZjtZlXra4eQ5G32o4mFIwVIOZse6XEn8bSHlnJX'; // Use com cuidado!
 const SERVER_ID = 'dff875d0';
 const PORT = 3000;
 
