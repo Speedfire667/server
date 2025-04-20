@@ -22,11 +22,11 @@ app.use(express.urlencoded({ extended: true }));
 function getStatusColor(status) {
   switch (status) {
     case 'online':
-      return 'green';  // Servidor em execução
+      return 'green';  // Servidor ligado
     case 'offline':
       return 'red';    // Servidor parado
     case 'restarting':
-      return 'yellow'; // Servidor reiniciando
+      return 'orange'; // Servidor iniciando ou parando
     default:
       return 'gray';   // Status desconhecido
   }
