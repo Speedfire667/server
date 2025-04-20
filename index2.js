@@ -7,7 +7,7 @@ const PORT = 3000;
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // CONFIG DO PTERODACTYL
-const API_URL = 'https://panel.pterodactyl.app'; // coloque o link exato do seu painel aqui
+const API_URL = 'https://backend.magmanode.com/server/64170598'; // coloque o link exato do seu painel aqui
 const API_KEY = 'ptlc_qbwCZjtZlXra4eQ5G32o4mFIwVIOZse6XEn8bSHlnJX';
 
 const HEADERS = {
