@@ -1,13 +1,10 @@
 const axios = require('axios');
 const express = require('express');
-const { Client, GatewayIntentBits } = require('discord.js');
 
 // ========== CONFIGS ==========
 const PANEL_URL = 'https://backend.magmanode.com';
 const CLIENT_TOKEN = 'ptlc_Db3dp1bv0rVZsutv2aH4mlYg6XXTkwXvZL0XUwEaByL'; // Use com cuidado!
 const SERVER_ID = 'dff875d0';
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const ALLOWED_CHANNEL_ID = '1360274781697478798';
 const PORT = 3000;
 
 const clientHeaders = {
@@ -185,62 +182,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// ========== DISCORD BOT ==========
-
-const bot = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+// ========== INICIAR SERVIDOR ==========
+app.listen(PORT, () => {
+  console.log(`🌐 Painel disponível em http://localhost:${PORT}`);
 });
-
-bot.on('ready', () => {
-  console.log(`🤖 Bot do Discord online como ${bot.user.tag}`);
-});
-
-bot.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
-
-  const content = message.content.toLowerCase();
-
-  if (content === '!start') {
-    const msg = await iniciarServidor();
-    message.reply(msg);
-  } else if (content === '!stop') {
-    const msg = await pararServidor();
-    message.reply(msg);
-  } else if (content === '!restart') {
-    const msg = await reiniciarServidor();
-    message.reply(msg);
-  } else if (content === '!status') {
-    const status = await statusServidor();
-    message.reply(`📊 Status do servidor: **${status}**`);
-  } else if (content === '!ip') {
-    const ip = await obterIpDoServidor();
-    message.reply(`🌐 IP do servidor: \`${ip}\``);
-  } else if (content === '!usage') {
-    const usage = await obterUsoServidor();
-    message.reply(`📈 Uso do servidor:\n${usage}`);
-  } else if (content === '!logs') {
-    const logs = await obterLogsServidor();
-    message.reply(`📝 Logs recentes:\n\`\`\`\n${logs.slice(0, 1800)}\n\`\`\``);
-  } else if (content === '!help') {
-    message.reply(`
-📋 **Comandos disponíveis:**
-\`!start\` - Iniciar o servidor
-\`!stop\` - Parar o servidor
-\`!restart\` - Reiniciar o servidor
-\`!status\` - Ver status atual
-\`!ip\` - Ver IP do servidor
-\`!usage\` - Ver uso de CPU/RAM/Disco
-\`!logs\` - Ver logs recentes
-\`!help\` - Mostrar esta mensagem
-    `);
-  }
-});
-
-// Inicia o bot
-bot.login(DISCORD);
-          
