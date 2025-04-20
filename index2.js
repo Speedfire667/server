@@ -22,6 +22,12 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', async (req, res) => {
   try {
     const response = await axios.get(`${API_URL}/api/client`, { headers: HEADERS });
+    
+    // Verificar se a resposta contém dados válidos
+    if (!response.data || !response.data.data) {
+      return res.send('Dados de servidores não encontrados ou formato inválido.');
+    }
+
     const servidores = response.data.data.map(s => ({
       nome: s.attributes.name,
       id: s.attributes.identifier
