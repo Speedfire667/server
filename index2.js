@@ -1,9 +1,9 @@
 const axios = require('axios');
 const express = require('express');
+const os = require('os');
 
-// ========== CONFIGS ==========
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_BLKjOjB9trl9GORQ3RChM0LWedeDJEOzaLUq6JGK6hX'; // Use com cuidado!
+const CLIENT_TOKEN = 'ptlc_Db3dp1bv0rVZsutv2aH4mlYg6XXTkwXvZL0XUwEaByL';
 const SERVER_ID = 'dff875d0';
 const PORT = 3000;
 
@@ -14,8 +14,6 @@ const clientHeaders = {
 };
 
 const app = express();
-
-// ========== FUNÇÕES DO SERVIDOR ==========
 
 async function obterIpDoServidor() {
   try {
@@ -76,8 +74,6 @@ async function reiniciarServidor() {
   }
 }
 
-// ========== ROTAS WEB ==========
-
 app.get('/status', async (req, res) => {
   const status = await statusServidor();
   res.json({ status });
@@ -103,6 +99,7 @@ app.get('/ip', async (req, res) => {
   res.json({ ip });
 });
 
+// Página web com botões
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -154,10 +151,21 @@ app.get('/', (req, res) => {
   `);
 });
 
-// ========== INICIAR SERVIDOR EXPRESS ==========
+// Obter IP local da máquina
+function obterIpLocal() {
+  const interfaces = require('os').networkInterfaces();
+  for (const nome in interfaces) {
+    for (const iface of interfaces[nome]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
 
-app.listen(PORT, async () => {
-  const ip = await obterIpDoServidor();
-  console.log(`✅ Servidor Express rodando em http://localhost:${PORT}`);
-  console.log(`🌍 IP do servidor: ${ip}`);
+// Iniciar servidor web
+app.listen(PORT, () => {
+  const ip = obterIpLocal();
+  console.log(`✅ Site rodando em: http://${ip}:${PORT}`);
 });
