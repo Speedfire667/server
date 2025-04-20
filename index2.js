@@ -1,179 +1,76 @@
-const axios = require('axios');
 const express = require('express');
-
-// ========== CONFIGS ==========
-const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_qbwCZjtZlXra4eQ5G32o4mFIwVIOZse6XEn8bSHlnJX'; // Use com cuidado!
-const SERVER_ID = 'dff875d0';
+const axios = require('axios');
+const app = express();
 const PORT = 3000;
 
-const clientHeaders = {
-  Authorization: `Bearer ${CLIENT_TOKEN}`,
-  Accept: 'Application/vnd.pterodactyl.v1+json',
-  'Content-Type': 'application/json',
+// CONFIG DO PTERODACTYL
+const API_URL = 'https://panel.pterodactyl.app'; // ou o endereço do seu painel
+const API_KEY = 'ptlc_qbwCZjtZlXra4eQ5G32o4mFIwVIOZse6XEn8bSHlnJX';
+
+const HEADERS = {
+  'Authorization': `Bearer ${API_KEY}`,
+  'Accept': 'Application/vnd.pterodactyl.v1+json',
+  'Content-Type': 'application/json'
 };
 
-const app = express();
+app.use(express.urlencoded({ extended: true }));
 
-// ========== FUNÇÕES ==========
-async function obterIpDoServidor() {
+// Página principal
+app.get('/', async (req, res) => {
   try {
-    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}`, {
-      headers: clientHeaders,
-    });
-    const allocations = res.data.attributes.relationships.allocations.data;
-    const principal = allocations.find(a => a.attributes.is_default);
-    if (!principal) return 'Erro: Nenhum IP padrão configurado.';
-    const ip = principal.attributes.ip;
-    const port = principal.attributes.port;
-    return `${ip}:${port}`;
-  } catch (err) {
-    console.error('Erro ao obter IP do servidor:', err.message);
-    return null;
-  }
-}
+    const response = await axios.get(`${API_URL}/api/client`, { headers: HEADERS });
+    const servidores = response.data.data.map(s => ({
+      nome: s.attributes.name,
+      id: s.attributes.identifier
+    }));
 
-async function obterUsoServidor() {
-  try {
-    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
-      headers: clientHeaders,
-    });
-    const usage = res.data.attributes.resources;
-    return `
-CPU: ${(usage.cpu_absolute || 0).toFixed(2)}%
-RAM: ${(usage.memory_bytes / 1024 / 1024).toFixed(2)} MB
-Disco: ${(usage.disk_bytes / 1024 / 1024).toFixed(2)} MB`;
-  } catch (err) {
-    console.error('Erro ao obter uso de recursos:', err.message);
-    return 'Erro ao obter uso de recursos!';
-  }
-}
-
-async function statusServidor() {
-  try {
-    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
-      headers: clientHeaders,
-    });
-    return res.data.attributes.current_state;
-  } catch (err) {
-    console.error('Erro ao verificar status:', err.message);
-    return 'Erro';
-  }
-}
-
-async function iniciarServidor() {
-  try {
-    await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'start' }, { headers: clientHeaders });
-    return 'Servidor iniciado!';
-  } catch (err) {
-    console.error('Erro ao iniciar servidor:', err.message);
-    return 'Erro ao iniciar servidor!';
-  }
-}
-
-async function pararServidor() {
-  try {
-    await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'stop' }, { headers: clientHeaders });
-    return 'Servidor parado!';
-  } catch (err) {
-    console.error('Erro ao parar servidor:', err.message);
-    return 'Erro ao parar servidor!';
-  }
-}
-
-async function reiniciarServidor() {
-  try {
-    await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'restart' }, { headers: clientHeaders });
-    return 'Servidor reiniciado!';
-  } catch (err) {
-    console.error('Erro ao reiniciar servidor:', err.message);
-    return 'Erro ao reiniciar servidor!';
-  }
-}
-
-// ========== ROTAS ==========
-app.get('/status', async (req, res) => {
-  const status = await statusServidor();
-  res.json({ status });
-});
-
-app.post('/iniciar', async (req, res) => {
-  const result = await iniciarServidor();
-  res.json({ message: result });
-});
-
-app.post('/parar', async (req, res) => {
-  const result = await pararServidor();
-  res.json({ message: result });
-});
-
-app.post('/reiniciar', async (req, res) => {
-  const result = await reiniciarServidor();
-  res.json({ message: result });
-});
-
-app.get('/ip', async (req, res) => {
-  const ip = await obterIpDoServidor();
-  res.json({ ip });
-});
-
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="pt-BR">
+    let html = `
+    <html>
     <head>
-        <meta charset="UTF-8">
-        <title>Controle do Servidor</title>
+      <title>Gerenciador de Servidores</title>
+      <style>
+        body { font-family: Arial; background: #111; color: #fff; text-align: center; }
+        .card { background: #222; padding: 20px; margin: 20px auto; border-radius: 10px; width: 300px; box-shadow: 0 0 10px #000; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .start { background: #28a745; color: #fff; }
+        .stop { background: #dc3545; color: #fff; }
+        .restart { background: #ffc107; color: #000; }
+      </style>
     </head>
     <body>
-        <h1>Controle do Servidor</h1>
-        <button onclick="iniciarServidor()">Iniciar</button>
-        <button onclick="pararServidor()">Parar</button>
-        <button onclick="reiniciarServidor()">Reiniciar</button>
-        <button onclick="mostrarIp()">Ver IP</button>
-        <div id="status">Status: <span id="statusText">Carregando...</span></div>
-        <script>
-            async function obterStatus() {
-                const res = await fetch('/status');
-                const data = await res.json();
-                document.getElementById('statusText').textContent = data.status;
-            }
-            async function iniciarServidor() {
-                const res = await fetch('/iniciar', { method: 'POST' });
-                const data = await res.json();
-                alert(data.message);
-                obterStatus();
-            }
-            async function pararServidor() {
-                const res = await fetch('/parar', { method: 'POST' });
-                const data = await res.json();
-                alert(data.message);
-                obterStatus();
-            }
-            async function reiniciarServidor() {
-                const res = await fetch('/reiniciar', { method: 'POST' });
-                const data = await res.json();
-                alert(data.message);
-                obterStatus();
-            }
-            async function mostrarIp() {
-                const res = await fetch('/ip');
-                const data = await res.json();
-                alert(\`IP do servidor: \${data.ip}\`);
-            }
-            window.onload = obterStatus;
-        </script>
-    </body>
-    </html>
-  `);
-});
+      <h1>Servidores Pterodactyl</h1>`;
 
-// ========== INICIAR SERVIDOR ==========
-app.listen(PORT, async () => {
-  const ip = await obterIpDoServidor();
-  if (ip) {
-    console.log(ip); // Exibe só o IP no terminal
-  } else {
-    console.error('Erro ao obter o IP do servidor.');
+    servidores.forEach(s => {
+      html += `
+      <div class="card">
+        <h2>${s.nome}</h2>
+        <form method="POST" action="/power">
+          <input type="hidden" name="id" value="${s.id}">
+          <button class="start" name="comando" value="start">Start</button>
+          <button class="stop" name="comando" value="stop">Stop</button>
+          <button class="restart" name="comando" value="restart">Restart</button>
+        </form>
+      </div>`;
+    });
+
+    html += `</body></html>`;
+    res.send(html);
+  } catch (err) {
+    res.send('Erro ao carregar servidores: ' + (err.response?.data || err.message));
   }
 });
+
+// Controle de servidor
+app.post('/power', async (req, res) => {
+  const { id, comando } = req.body;
+  try {
+    await axios.post(`${API_URL}/api/client/servers/${id}/power`, {
+      signal: comando
+    }, { headers: HEADERS });
+    res.redirect('/');
+  } catch (err) {
+    res.send('Erro ao enviar comando: ' + (err.response?.data || err.message));
+  }
+});
+
+app.listen(PORT, () => console.log(`Servidor rodando em http://localhost:${PORT}`));
