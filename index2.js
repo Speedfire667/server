@@ -18,6 +18,20 @@ const HEADERS = {
 
 app.use(express.urlencoded({ extended: true }));
 
+// Função para determinar a cor da bolinha de status
+function getStatusColor(status) {
+  switch (status) {
+    case 'online':
+      return 'green';  // Servidor em execução
+    case 'offline':
+      return 'red';    // Servidor parado
+    case 'restarting':
+      return 'yellow'; // Servidor reiniciando
+    default:
+      return 'gray';   // Status desconhecido
+  }
+}
+
 // Página principal
 app.get('/', async (req, res) => {
   try {
@@ -30,7 +44,8 @@ app.get('/', async (req, res) => {
 
     const servidores = response.data.data.map(s => ({
       nome: s.attributes.name,
-      id: s.attributes.identifier
+      id: s.attributes.identifier,
+      status: s.attributes.state  // Pega o estado do servidor
     }));
 
     let html = `
@@ -44,15 +59,17 @@ app.get('/', async (req, res) => {
         .start { background: #28a745; color: #fff; }
         .stop { background: #dc3545; color: #fff; }
         .restart { background: #ffc107; color: #000; }
+        .status { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 10px; }
       </style>
     </head>
     <body>
       <h1>Servidores Pterodactyl</h1>`;
 
     servidores.forEach(s => {
+      const statusColor = getStatusColor(s.status); // Obter a cor baseada no status
       html += `
       <div class="card">
-        <h2>${s.nome}</h2>
+        <h2>${s.nome} <span class="status" style="background-color: ${statusColor};"></span></h2>
         <form method="POST" action="/power">
           <input type="hidden" name="id" value="${s.id}">
           <button class="start" name="comando" value="start">Start</button>
