@@ -4,8 +4,8 @@ const https = require('https');
 
 // ========== CONFIGS ==========
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_s0SIKJVC4TvyySK88uNAZLXc4usRgSUEO85C4tGFQwR'; // Use com cuidado!
-const SERVER_ID = 'dff875d0';
+const CLIENT_TOKEN = 'ptlc_s0SIKJVC4TvyySK88uNAZLXc4usRgSUEO85C4tGFQw'; // NOVA TOKEN
+const SERVER_ID = 'c9593e69'; // Atualizado
 const PORT = 3000;
 
 const clientHeaders = {
@@ -16,8 +16,7 @@ const clientHeaders = {
 
 const app = express();
 
-// ========== FUNÇÕES DO SERVIDOR ==========
-
+// ========== FUNÇÕES ==========
 async function obterIpDoServidor() {
   try {
     const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}`, {
@@ -48,18 +47,6 @@ Disco: ${(usage.disk_bytes / 1024 / 1024).toFixed(2)} MB`;
   } catch (err) {
     console.error('❌ Erro ao obter uso de recursos:', err.message);
     return '❌ Erro ao obter uso de recursos!';
-  }
-}
-
-async function obterLogsServidor() {
-  try {
-    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/logs`, {
-      headers: clientHeaders,
-    });
-    return res.data.data || 'Sem logs disponíveis.';
-  } catch (err) {
-    console.error('❌ Erro ao obter logs:', err.message);
-    return '❌ Erro ao obter logs!';
   }
 }
 
@@ -105,8 +92,7 @@ async function reiniciarServidor() {
   }
 }
 
-// ========== ROTAS WEB ==========
-
+// ========== ROTAS ==========
 app.get('/status', async (req, res) => {
   const status = await statusServidor();
   res.json({ status });
@@ -137,15 +123,48 @@ app.get('/', (req, res) => {
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
-        <meta charset="UTF-8">
+        <meta charset="UTF-8" />
         <title>Controle do Servidor</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #1e1e2f;
+                color: #f0f0f0;
+                text-align: center;
+                padding: 40px;
+            }
+            h1 {
+                color: #6ab04c;
+            }
+            button {
+                margin: 10px;
+                padding: 12px 24px;
+                font-size: 16px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: background 0.3s;
+                color: white;
+            }
+            button:hover {
+                background: #444;
+            }
+            #btn-iniciar { background: #27ae60; }
+            #btn-parar { background: #c0392b; }
+            #btn-reiniciar { background: #f39c12; }
+            #btn-ip { background: #2980b9; }
+            #status {
+                margin-top: 20px;
+                font-size: 18px;
+            }
+        </style>
     </head>
     <body>
-        <h1>Controle do Servidor</h1>
-        <button onclick="iniciarServidor()">Iniciar</button>
-        <button onclick="pararServidor()">Parar</button>
-        <button onclick="reiniciarServidor()">Reiniciar</button>
-        <button onclick="mostrarIp()">Ver IP do Servidor</button>
+        <h1>Painel de Controle do Servidor</h1>
+        <button id="btn-iniciar" onclick="iniciarServidor()">Iniciar</button>
+        <button id="btn-parar" onclick="pararServidor()">Parar</button>
+        <button id="btn-reiniciar" onclick="reiniciarServidor()">Reiniciar</button>
+        <button id="btn-ip" onclick="mostrarIp()">Ver IP</button>
         <div id="status">Status: <span id="statusText">Carregando...</span></div>
         <script>
             async function obterStatus() {
@@ -184,27 +203,16 @@ app.get('/', (req, res) => {
 });
 
 // ========== INICIAR SERVIDOR ==========
-
 app.listen(PORT, () => {
-  console.log(`🌐 Painel web iniciado em http://localhost:${PORT}`);
+  console.log(`🚀 Painel rodando em http://localhost:${PORT}`);
 
   // Mostrar IP público da máquina no log
-  https.get('https://api.ipify.org?format=json', (resp) => {
+  https.get('https://ifconfig.me/ip', (resp) => {
     let data = '';
-
-    resp.on('data', (chunk) => {
-      data += chunk;
-    });
-
+    resp.on('data', (chunk) => data += chunk);
     resp.on('end', () => {
-      try {
-        const ipInfo = JSON.parse(data);
-        console.log(`🌍 IP público da máquina: ${ipInfo.ip}`);
-      } catch (err) {
-        console.error('❌ Erro ao interpretar IP público:', err.message);
-      }
+      console.log(`🌍 IP público da máquina: ${data.trim()}`);
     });
-
   }).on("error", (err) => {
     console.error("❌ Erro ao obter IP público:", err.message);
   });
