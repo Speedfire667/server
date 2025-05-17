@@ -1,104 +1,211 @@
-const express = require('express');
 const axios = require('axios');
-const app = express();
+const express = require('express');
+const https = require('https');
+
+// ========== CONFIGS ==========
+const PANEL_URL = 'https://backend.magmanode.com';
+const CLIENT_TOKEN = 'ptlc_Db3dp1bv0rVZsutv2aH4mlYg6XXTkwXvZL0XUwEaByL'; // Use com cuidado!
+const SERVER_ID = 'dff875d0';
 const PORT = 3000;
 
-// Desativa a verificação SSL (usar com cuidado)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-// CONFIG DO PTERODACTYL
-const API_URL = 'https://backend.magmanode.com'; // coloque o link exato do seu painel aqui
-const API_KEY = 'ptlc_qbwCZjtZlXra4eQ5G32o4mFIwVIOZse6XEn8bSHlnJX';
-
-const HEADERS = {
-  'Authorization': `Bearer ${API_KEY}`,
-  'Accept': 'Application/vnd.pterodactyl.v1+json',
-  'Content-Type': 'application/json'
+const clientHeaders = {
+  Authorization: `Bearer ${CLIENT_TOKEN}`,
+  Accept: 'Application/vnd.pterodactyl.v1+json',
+  'Content-Type': 'application/json',
 };
 
-app.use(express.urlencoded({ extended: true }));
+const app = express();
 
-// Função para determinar a cor da bolinha de status
-function getStatusColor(status) {
-  switch (status) {
-    case 'online':
-      return 'green';  // Servidor ligado
-    case 'offline':
-      return 'red';    // Servidor parado
-    case 'restarting':
-      return 'orange'; // Servidor iniciando ou parando
-    default:
-      return 'gray';   // Status desconhecido
+// ========== FUNÇÕES DO SERVIDOR ==========
+
+async function obterIpDoServidor() {
+  try {
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}`, {
+      headers: clientHeaders,
+    });
+    const allocations = res.data.attributes.relationships.allocations.data;
+    const principal = allocations.find(a => a.attributes.is_default);
+    if (!principal) return '❌ Nenhum IP padrão configurado.';
+    const ip = principal.attributes.ip;
+    const port = principal.attributes.port;
+    return `${ip}:${port}`;
+  } catch (err) {
+    console.error('❌ Erro ao obter IP do servidor:', err.message);
+    return '❌ Erro ao obter IP do servidor!';
   }
 }
 
-// Página principal
-app.get('/', async (req, res) => {
+async function obterUsoServidor() {
   try {
-    const response = await axios.get(`${API_URL}/api/client`, { headers: HEADERS });
-    
-    // Verificar se a resposta contém dados válidos
-    if (!response.data || !response.data.data) {
-      return res.send('Dados de servidores não encontrados ou formato inválido.');
-    }
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
+      headers: clientHeaders,
+    });
+    const usage = res.data.attributes.resources;
+    return `
+CPU: ${(usage.cpu_absolute || 0).toFixed(2)}%
+RAM: ${(usage.memory_bytes / 1024 / 1024).toFixed(2)} MB
+Disco: ${(usage.disk_bytes / 1024 / 1024).toFixed(2)} MB`;
+  } catch (err) {
+    console.error('❌ Erro ao obter uso de recursos:', err.message);
+    return '❌ Erro ao obter uso de recursos!';
+  }
+}
 
-    const servidores = response.data.data.map(s => ({
-      nome: s.attributes.name,
-      id: s.attributes.identifier,
-      status: s.attributes.state  // Pega o estado do servidor
-    }));
+async function obterLogsServidor() {
+  try {
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/logs`, {
+      headers: clientHeaders,
+    });
+    return res.data.data || 'Sem logs disponíveis.';
+  } catch (err) {
+    console.error('❌ Erro ao obter logs:', err.message);
+    return '❌ Erro ao obter logs!';
+  }
+}
 
-    let html = `
-    <html>
+async function statusServidor() {
+  try {
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
+      headers: clientHeaders,
+    });
+    return res.data.attributes.current_state;
+  } catch (err) {
+    console.error('❌ Erro ao verificar status:', err.message);
+    return 'Erro';
+  }
+}
+
+async function iniciarServidor() {
+  try {
+    await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'start' }, { headers: clientHeaders });
+    return '✅ Servidor iniciado!';
+  } catch (err) {
+    console.error('❌ Erro ao iniciar servidor:', err.message);
+    return '❌ Erro ao iniciar servidor!';
+  }
+}
+
+async function pararServidor() {
+  try {
+    await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'stop' }, { headers: clientHeaders });
+    return '🛑 Servidor parado!';
+  } catch (err) {
+    console.error('❌ Erro ao parar servidor:', err.message);
+    return '❌ Erro ao parar servidor!';
+  }
+}
+
+async function reiniciarServidor() {
+  try {
+    await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, { signal: 'restart' }, { headers: clientHeaders });
+    return '🔄 Servidor reiniciado!';
+  } catch (err) {
+    console.error('❌ Erro ao reiniciar servidor:', err.message);
+    return '❌ Erro ao reiniciar servidor!';
+  }
+}
+
+// ========== ROTAS WEB ==========
+
+app.get('/status', async (req, res) => {
+  const status = await statusServidor();
+  res.json({ status });
+});
+
+app.post('/iniciar', async (req, res) => {
+  const result = await iniciarServidor();
+  res.json({ message: result });
+});
+
+app.post('/parar', async (req, res) => {
+  const result = await pararServidor();
+  res.json({ message: result });
+});
+
+app.post('/reiniciar', async (req, res) => {
+  const result = await reiniciarServidor();
+  res.json({ message: result });
+});
+
+app.get('/ip', async (req, res) => {
+  const ip = await obterIpDoServidor();
+  res.json({ ip });
+});
+
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
     <head>
-      <title>Gerenciador de Servidores</title>
-      <style>
-        body { font-family: Arial; background: #111; color: #fff; text-align: center; }
-        .card { background: #222; padding: 20px; margin: 20px auto; border-radius: 10px; width: 300px; box-shadow: 0 0 10px #000; }
-        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
-        .start { background: #28a745; color: #fff; }
-        .stop { background: #dc3545; color: #fff; }
-        .restart { background: #ffc107; color: #000; }
-        .status { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 10px; }
-      </style>
+        <meta charset="UTF-8">
+        <title>Controle do Servidor</title>
     </head>
     <body>
-      <h1>Servidores Pterodactyl</h1>`;
+        <h1>Controle do Servidor</h1>
+        <button onclick="iniciarServidor()">Iniciar</button>
+        <button onclick="pararServidor()">Parar</button>
+        <button onclick="reiniciarServidor()">Reiniciar</button>
+        <button onclick="mostrarIp()">Ver IP do Servidor</button>
+        <div id="status">Status: <span id="statusText">Carregando...</span></div>
+        <script>
+            async function obterStatus() {
+                const res = await fetch('/status');
+                const data = await res.json();
+                document.getElementById('statusText').textContent = data.status;
+            }
+            async function iniciarServidor() {
+                const res = await fetch('/iniciar', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message);
+                obterStatus();
+            }
+            async function pararServidor() {
+                const res = await fetch('/parar', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message);
+                obterStatus();
+            }
+            async function reiniciarServidor() {
+                const res = await fetch('/reiniciar', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message);
+                obterStatus();
+            }
+            async function mostrarIp() {
+                const res = await fetch('/ip');
+                const data = await res.json();
+                alert(\`🌍 IP do servidor: \${data.ip}\`);
+            }
+            window.onload = obterStatus;
+        </script>
+    </body>
+    </html>
+  `);
+});
 
-    servidores.forEach(s => {
-      const statusColor = getStatusColor(s.status); // Obter a cor baseada no status
-      html += `
-      <div class="card">
-        <h2>${s.nome} <span class="status" style="background-color: ${statusColor};"></span></h2>
-        <form method="POST" action="/power">
-          <input type="hidden" name="id" value="${s.id}">
-          <button class="start" name="comando" value="start">Start</button>
-          <button class="stop" name="comando" value="stop">Stop</button>
-          <button class="restart" name="comando" value="restart">Restart</button>
-        </form>
-      </div>`;
+// ========== INICIAR SERVIDOR ==========
+
+app.listen(PORT, () => {
+  console.log(`🌐 Painel web iniciado em http://localhost:${PORT}`);
+
+  // Mostrar IP público da máquina no log
+  https.get('https://api.ipify.org?format=json', (resp) => {
+    let data = '';
+
+    resp.on('data', (chunk) => {
+      data += chunk;
     });
 
-    html += `</body></html>`;
-    res.send(html);
-  } catch (err) {
-    const errorMessage = err.response ? err.response.data : err.message;
-    res.send(`Erro ao carregar servidores:<br><pre>${JSON.stringify(errorMessage, null, 2)}</pre>`);
-  }
-});
+    resp.on('end', () => {
+      try {
+        const ipInfo = JSON.parse(data);
+        console.log(`🌍 IP público da máquina: ${ipInfo.ip}`);
+      } catch (err) {
+        console.error('❌ Erro ao interpretar IP público:', err.message);
+      }
+    });
 
-// Controle de servidor
-app.post('/power', async (req, res) => {
-  const { id, comando } = req.body;
-  try {
-    await axios.post(`${API_URL}/api/client/servers/${id}/power`, {
-      signal: comando
-    }, { headers: HEADERS });
-    res.redirect('/');
-  } catch (err) {
-    const errorMessage = err.response ? err.response.data : err.message;
-    res.send(`Erro ao enviar comando:<br><pre>${JSON.stringify(errorMessage, null, 2)}</pre>`);
-  }
+  }).on("error", (err) => {
+    console.error("❌ Erro ao obter IP público:", err.message);
+  });
 });
-
-app.listen(PORT, () => console.log(`Servidor web rodando em http://localhost:${PORT}`));
