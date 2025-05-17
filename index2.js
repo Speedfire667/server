@@ -4,7 +4,7 @@ const https = require('https');
 
 // ========== CONFIGS ==========
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_s0SIKJVC4TvyySK88uNAZLXc4usRgSUEO85C4tGFQw'; // NOVA TOKEN
+const CLIENT_TOKEN = 'ptlc_UzFaWrwEUSMR8qYYJmvhND5X7dinnDVtSIuBirqryuo'; // NOVA TOKEN
 const SERVER_ID = 'c9593e69'; // Atualizado
 const PORT = 3000;
 
