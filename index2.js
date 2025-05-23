@@ -1,10 +1,22 @@
 const express = require('express');
 const axios = require('axios');
-const path = require('path');
+const https = require('https');
 
+const app = express();
+app.use(express.json());
+
+// Libera CORS manualmente
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*'); // ou coloque o domínio do seu frontend
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+// ======== CONFIGS ========
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_UzFaWrwEUSMR8qYYJmvhND5X7dinnDVtSIuBirqryuo'; // sua token
-const SERVER_ID = 'c9593e69'; // seu server id
+const CLIENT_TOKEN = 'ptlc_UzFaWrwEUSMR8qYYJmvhND5X7dinnDVtSIuBirqryuo';
+const SERVER_ID = 'c9593e69';
 const PORT = process.env.PORT || 3000;
 
 const clientHeaders = {
@@ -13,15 +25,7 @@ const clientHeaders = {
   'Content-Type': 'application/json',
 };
 
-const app = express();
-app.use(express.json());
-
-// Servir o arquivo HTML da raiz (index.html)
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Funções API (idem antes)
+// ======== FUNÇÕES ========
 
 async function obterIpDoServidor() {
   try {
@@ -30,11 +34,13 @@ async function obterIpDoServidor() {
     });
     const allocations = res.data.attributes.relationships.allocations.data;
     const principal = allocations.find(a => a.attributes.is_default);
-    if (!principal) return null;
-    return `${principal.attributes.ip}:${principal.attributes.port}`;
+    if (!principal) return 'Nenhum IP padrão configurado.';
+    const ip = principal.attributes.ip;
+    const port = principal.attributes.port;
+    return `${ip}:${port}`;
   } catch (err) {
     console.error('Erro ao obter IP do servidor:', err.message);
-    return null;
+    return 'Erro ao obter IP do servidor!';
   }
 }
 
@@ -45,13 +51,13 @@ async function obterUsoServidor() {
     });
     const usage = res.data.attributes.resources;
     return {
-      cpu: (usage.cpu_absolute || 0).toFixed(2),
-      ram: (usage.memory_bytes / 1024 / 1024).toFixed(2),
-      disk: (usage.disk_bytes / 1024 / 1024).toFixed(2),
+      cpu: `${(usage.cpu_absolute || 0).toFixed(2)}%`,
+      ram: `${(usage.memory_bytes / 1024 / 1024).toFixed(2)} MB`,
+      disco: `${(usage.disk_bytes / 1024 / 1024).toFixed(2)} MB`,
     };
   } catch (err) {
-    console.error('Erro ao obter uso:', err.message);
-    return null;
+    console.error('Erro ao obter uso de recursos:', err.message);
+    return { erro: 'Erro ao obter uso de recursos!' };
   }
 }
 
@@ -62,7 +68,7 @@ async function statusServidor() {
     });
     return res.data.attributes.current_state;
   } catch (err) {
-    console.error('Erro ao obter status:', err.message);
+    console.error('Erro ao verificar status:', err.message);
     return 'Erro';
   }
 }
@@ -97,32 +103,22 @@ async function reiniciarServidor() {
   }
 }
 
-async function obterJogadores() {
-  try {
-    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/players`, {
-      headers: clientHeaders,
-    });
-    if (!res.data || !res.data.data) return [];
-    return res.data.data.map(p => p.attributes.username);
-  } catch (err) {
-    console.error('Erro ao obter jogadores:', err.message);
-    return [];
-  }
+// Mock de jogadores e console (já que MagmaNode não expõe diretamente)
+let jogadores = ['Jogador1', 'Jogador2'];
+let consoleLogs = [];
+
+function adicionarLogConsole(mensagem) {
+  const timestamp = new Date().toISOString();
+  consoleLogs.push(`[${timestamp}] ${mensagem}`);
+  if (consoleLogs.length > 100) consoleLogs.shift();
 }
 
-// Console logs simulado
-let consoleLogs = ['Console iniciado...'];
-function addLog(msg) {
-  consoleLogs.push(msg);
-  if (consoleLogs.length > 50) consoleLogs.shift();
-}
-
+// Simulando logs a cada 10s
 setInterval(() => {
-  const now = new Date().toLocaleTimeString();
-  addLog(`[${now}] Log simulado do servidor Bedrock.`);
+  adicionarLogConsole('Log automático do servidor.');
 }, 10000);
 
-// Rotas API
+// ======== ROTAS ========
 
 app.get('/status', async (req, res) => {
   const status = await statusServidor();
@@ -130,35 +126,34 @@ app.get('/status', async (req, res) => {
 });
 
 app.post('/iniciar', async (req, res) => {
-  const msg = await iniciarServidor();
-  addLog(`[${new Date().toLocaleTimeString()}] Comando iniciar enviado.`);
-  res.json({ message: msg });
+  const result = await iniciarServidor();
+  adicionarLogConsole('Comando: Iniciar servidor');
+  res.json({ message: result });
 });
 
 app.post('/parar', async (req, res) => {
-  const msg = await pararServidor();
-  addLog(`[${new Date().toLocaleTimeString()}] Comando parar enviado.`);
-  res.json({ message: msg });
+  const result = await pararServidor();
+  adicionarLogConsole('Comando: Parar servidor');
+  res.json({ message: result });
 });
 
 app.post('/reiniciar', async (req, res) => {
-  const msg = await reiniciarServidor();
-  addLog(`[${new Date().toLocaleTimeString()}] Comando reiniciar enviado.`);
-  res.json({ message: msg });
+  const result = await reiniciarServidor();
+  adicionarLogConsole('Comando: Reiniciar servidor');
+  res.json({ message: result });
 });
 
 app.get('/ip', async (req, res) => {
   const ip = await obterIpDoServidor();
-  res.json({ ip: ip || 'IP não disponível' });
+  res.json({ ip });
 });
 
 app.get('/uso', async (req, res) => {
   const uso = await obterUsoServidor();
-  res.json({ uso });
+  res.json(uso);
 });
 
-app.get('/jogadores', async (req, res) => {
-  const jogadores = await obterJogadores();
+app.get('/players', (req, res) => {
   res.json({ jogadores });
 });
 
@@ -166,6 +161,18 @@ app.get('/console', (req, res) => {
   res.json({ logs: consoleLogs });
 });
 
+// ======== INICIAR SERVIDOR ========
 app.listen(PORT, () => {
-  console.log(`Painel rodando em http://localhost:${PORT}`);
+  console.log(`🚀 Painel rodando em http://localhost:${PORT}`);
+
+  // Mostrar IP público da máquina no log
+  https.get('https://ifconfig.me/ip', (resp) => {
+    let data = '';
+    resp.on('data', chunk => data += chunk);
+    resp.on('end', () => {
+      console.log(`🌍 IP público da máquina: ${data.trim()}`);
+    });
+  }).on('error', (err) => {
+    console.error('Erro ao obter IP público:', err.message);
+  });
 });
