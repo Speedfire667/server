@@ -1,128 +1,158 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8" />
-<title>Painel de Controle do Servidor</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #1e1e2f;
-    color: #f0f0f0;
-    text-align: center;
-    padding: 40px;
-  }
-  h1 {
-    color: #6ab04c;
-  }
-  button {
-    font-size: 16px;
-    margin: 8px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    color: white;
-    transition: background 0.3s;
-  }
-  button:hover {
-    background: #444;
-  }
-  #btn-iniciar { background: #27ae60; }
-  #btn-parar { background: #c0392b; }
-  #btn-reiniciar { background: #f39c12; }
-  #btn-ip { background: #2980b9; }
-  #btn-jogadores { background: #9b59b6; }
-  #btn-console { background: #34495e; }
-  #status, #ip, #players, #console {
-    margin-top: 20px;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-    background: #222233;
-    border-radius: 10px;
-    padding: 15px;
-    text-align: left;
-    white-space: pre-wrap;
-    overflow-y: auto;
-    max-height: 250px;
-  }
-</style>
-</head>
-<body>
+const express = require('express');
+const axios = require('axios');
+const https = require('https');
 
-<h1>Painel de Controle do Servidor</h1>
+const app = express();
+app.use(express.json());
 
-<!-- Botões -->
-<button id="btn-iniciar">Iniciar Servidor</button>
-<button id="btn-parar">Parar Servidor</button>
-<button id="btn-reiniciar">Reiniciar Servidor</button>
-<button id="btn-status">Ver Status</button>
-<button id="btn-ip">Ver IP</button>
-<button id="btn-jogadores">Ver Jogadores</button>
-<button id="btn-console">Ver Console</button>
+// CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*'); 
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 
-<!-- Áreas de resultado -->
-<div id="status"></div>
-<div id="ip"></div>
-<div id="players"></div>
-<div id="console"></div>
+// ===== CONFIGS =====
+const PANEL_URL = 'https://backend.magmanode.com';
+const CLIENT_TOKEN = 'ptlc_MAy7qqgihyy7rh2eBGeIZhjOME4tTwyzhLTngSOvkFZ';
+const SERVER_ID = 'c9593e69';
+const PORT = process.env.PORT || 3000;
 
-<script>
-// URL fixa do backend (corrigido sem barra no final)
-const backendURL = "https://server-3-6by0.onrender.com";
+const clientHeaders = {
+  Authorization: `Bearer ${CLIENT_TOKEN}`,
+  Accept: 'Application/vnd.pterodactyl.v1+json',
+  'Content-Type': 'application/json',
+};
 
-// Helper para fetch com tratamento simples de erros
-async function fetchJSON(endpoint, options) {
+// ===== FUNÇÕES =====
+
+async function obterIpDoServidor() {
   try {
-    const res = await fetch(backendURL + endpoint, options);
-    if (!res.ok) throw new Error(`Erro ${res.status}: ${res.statusText}`);
-    return await res.json();
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}`, {
+      headers: clientHeaders,
+    });
+    const allocations = res.data.attributes.relationships.allocations.data;
+    const principal = allocations.find(a => a.attributes.is_default);
+    if (!principal) return 'Nenhum IP padrão configurado.';
+    const ip = principal.attributes.ip;
+    const port = principal.attributes.port;
+    return `${ip}:${port}`;
   } catch (err) {
-    alert('Erro na requisição: ' + err.message);
-    throw err;
+    console.error('Erro ao obter IP:', err.message);
+    return 'Erro ao obter IP!';
   }
 }
 
-// Botões
-document.getElementById('btn-iniciar').onclick = async () => {
-  const res = await fetchJSON('/iniciar', { method: 'POST' });
-  alert(res.message);
-};
-
-document.getElementById('btn-parar').onclick = async () => {
-  const res = await fetchJSON('/parar', { method: 'POST' });
-  alert(res.message);
-};
-
-document.getElementById('btn-reiniciar').onclick = async () => {
-  const res = await fetchJSON('/reiniciar', { method: 'POST' });
-  alert(res.message);
-};
-
-document.getElementById('btn-status').onclick = async () => {
-  const res = await fetchJSON('/status');
-  document.getElementById('status').textContent = "Status do servidor: " + res.status;
-};
-
-document.getElementById('btn-ip').onclick = async () => {
-  const res = await fetchJSON('/ip');
-  document.getElementById('ip').textContent = "IP do servidor: " + res.ip;
-};
-
-document.getElementById('btn-jogadores').onclick = async () => {
-  const res = await fetchJSON('/players');
-  if (res.jogadores.length === 0) {
-    document.getElementById('players').textContent = "Nenhum jogador online.";
-  } else {
-    document.getElementById('players').textContent = "Jogadores online:\n" + res.jogadores.join('\n');
+async function obterUsoServidor() {
+  try {
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
+      headers: clientHeaders,
+    });
+    const usage = res.data.attributes.resources;
+    return {
+      cpu: `${(usage.cpu_absolute || 0).toFixed(2)}%`,
+      ram: `${(usage.memory_bytes / 1024 / 1024).toFixed(2)} MB`,
+      disco: `${(usage.disk_bytes / 1024 / 1024).toFixed(2)} MB`,
+    };
+  } catch (err) {
+    console.error('Erro ao obter uso:', err.message);
+    return { erro: 'Erro ao obter uso!' };
   }
-};
+}
 
-document.getElementById('btn-console').onclick = async () => {
-  const res = await fetchJSON('/console');
-  document.getElementById('console').textContent = res.logs.length ? res.logs.join('\n') : "Console vazio.";
-};
-</script>
+async function statusServidor() {
+  try {
+    const res = await axios.get(`${PANEL_URL}/api/client/servers/${SERVER_ID}/resources`, {
+      headers: clientHeaders,
+    });
+    return res.data.attributes.current_state;
+  } catch (err) {
+    console.error('Erro ao verificar status:', err.message);
+    return 'Erro';
+  }
+}
 
-</body>
-</html>
+async function acaoPowerServidor(signal) {
+  try {
+    await axios.post(`${PANEL_URL}/api/client/servers/${SERVER_ID}/power`, 
+      { signal }, { headers: clientHeaders });
+    return `Servidor ${signal} com sucesso!`;
+  } catch (err) {
+    console.error(`Erro ao ${signal} servidor:`, err.message);
+    return `Erro ao ${signal} servidor!`;
+  }
+}
+
+// Mock jogadores e console
+let jogadores = ['Jogador1', 'Jogador2'];
+let consoleLogs = [];
+
+function adicionarLogConsole(mensagem) {
+  const timestamp = new Date().toISOString();
+  consoleLogs.push(`[${timestamp}] ${mensagem}`);
+  if (consoleLogs.length > 100) consoleLogs.shift();
+}
+
+// Simulação de log a cada 10s
+setInterval(() => {
+  adicionarLogConsole('Log automático do servidor.');
+}, 10000);
+
+// ===== ROTAS =====
+
+app.get('/status', async (req, res) => {
+  const status = await statusServidor();
+  res.json({ status });
+});
+
+app.post('/iniciar', async (req, res) => {
+  const result = await acaoPowerServidor('start');
+  adicionarLogConsole('Comando: Iniciar servidor');
+  res.json({ message: result });
+});
+
+app.post('/parar', async (req, res) => {
+  const result = await acaoPowerServidor('stop');
+  adicionarLogConsole('Comando: Parar servidor');
+  res.json({ message: result });
+});
+
+app.post('/reiniciar', async (req, res) => {
+  const result = await acaoPowerServidor('restart');
+  adicionarLogConsole('Comando: Reiniciar servidor');
+  res.json({ message: result });
+});
+
+app.get('/ip', async (req, res) => {
+  const ip = await obterIpDoServidor();
+  res.json({ ip });
+});
+
+app.get('/uso', async (req, res) => {
+  const uso = await obterUsoServidor();
+  res.json(uso);
+});
+
+app.get('/players', (req, res) => {
+  res.json({ jogadores });
+});
+
+app.get('/console', (req, res) => {
+  res.json({ logs: consoleLogs });
+});
+
+// ===== INICIAR SERVIDOR =====
+app.listen(PORT, () => {
+  console.log(`🚀 Painel rodando em http://localhost:${PORT}`);
+
+  https.get('https://ifconfig.me/ip', (resp) => {
+    let data = '';
+    resp.on('data', chunk => data += chunk);
+    resp.on('end', () => {
+      console.log(`🌍 IP público: ${data.trim()}`);
+    });
+  }).on('error', (err) => {
+    console.error('Erro ao obter IP público:', err.message);
+  });
+});
