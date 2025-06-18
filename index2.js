@@ -15,8 +15,8 @@ app.use((req, res, next) => {
 
 // ===== CONFIGS =====
 const PANEL_URL = 'https://backend.magmanode.com';
-const CLIENT_TOKEN = 'ptlc_MAy7qqgihyy7rh2eBGeIZhjOME4tTwyzhLTngSOvkFZ';
-const SERVER_ID = 'c9593e69';
+const CLIENT_TOKEN = 'ptlc_LkI6CL2T5TLIin3LWkFxKxJlbZgXXsy9G4WGJhY6hiQ';
+const SERVER_ID = 'c5f1e24a';
 const PORT = process.env.PORT || 3000;
 
 const clientHeaders = {
