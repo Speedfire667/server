@@ -8,7 +8,7 @@ const CLIENT_TOKEN = 'ptlc_LkI6CL2T5TLIin3LWkFxKxJlbZgXXsy9G4WGJhY6hiQ'; // Use 
 const SERVER_ID = 'c5f1e24a';
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const ALLOWED_CHANNEL_ID = '1360274781697478798';
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const clientHeaders = {
   Authorization: `Bearer ${CLIENT_TOKEN}`,
@@ -244,4 +244,7 @@ bot.on('messageCreate', async (message) => {
 // Inicia o bot
 bot.login(DISCORD_TOKEN);
 
-          
+// Inicia o servidor web
+app.listen(PORT, () => {
+  console.log(`🌐 Servidor web rodando na porta ${PORT}`);
+});
