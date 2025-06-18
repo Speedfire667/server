@@ -242,5 +242,5 @@ bot.on('messageCreate', async (message) => {
 });
 
 // Inicia o bot
-bot.login(DISCORD
+bot.login(DISCORD)
           
