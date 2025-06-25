@@ -5,7 +5,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 // ========== CONFIGS ==========
 const PANEL_URL = 'https://backend.magmanode.com';
 const CLIENT_TOKEN = 'ptlc_LkI6CL2T5TLIin3LWkFxKxJlbZgXXsy9G4WGJhY6hiQ'; // Use com cuidado!
-const SERVER_ID = 'c5f1e24a';
+const SERVER_ID = '5e584135';
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const ALLOWED_CHANNEL_ID = '1360274781697478798';
 const PORT = process.env.PORT || 3000;
